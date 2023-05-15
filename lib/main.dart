@@ -39,20 +39,44 @@ class MyHomePage extends StatelessWidget {
   ];
   final Random random = new Random();
 
-  String totalTimeForRow(List<String> row) {
-    int totalHours = 0;
-    int totalMinutes = 0;
+  int timeToMinutes(String time) {
+    List<String> parts = time.split(':');
+    int hours = int.parse(parts[0]);
+    int minutes = int.parse(parts[1]);
+    return hours * 60 + minutes;
+  }
 
-    for (int i = 1; i < row.length; i++) {
-      List<String> timeParts = row[i].split(':');
-      totalHours += int.parse(timeParts[0]);
-      totalMinutes += int.parse(timeParts[1]);
+  String minutesToTime(int minutes) {
+    int hours = minutes ~/ 60;
+    minutes %= 60;
+    return '${hours.toString().padLeft(2, '0')}:${minutes.toString().padLeft(2, '0')}';
+  }
+
+  List<String> calculateColumnTimesAndEngagements(List<String> column) {
+    int runningTime = timeToMinutes(column[1]);
+    int joggingTime = timeToMinutes(column[2]);
+    int exerciseTime = timeToMinutes(column[3]);
+
+    int totalTime = runningTime + joggingTime + exerciseTime;
+
+    double runningEngagement = (runningTime / totalTime) * 100;
+    double joggingEngagement = (joggingTime / totalTime) * 100;
+    double exerciseEngagement = (exerciseTime / totalTime) * 100;
+
+    return [
+      minutesToTime(totalTime),
+      runningEngagement.toStringAsFixed(2) + '%',
+      joggingEngagement.toStringAsFixed(2) + '%',
+      exerciseEngagement.toStringAsFixed(2) + '%',
+    ];
+  }
+
+  String calculateTotalTimeForWeek(List<String> column) {
+    int totalTimeForWeek = 0;
+    for (int i = 1; i < column.length - 4; i++) {
+      totalTimeForWeek += timeToMinutes(column[i]);
     }
-
-    totalHours += totalMinutes ~/ 60;
-    totalMinutes %= 60;
-
-    return '${totalHours.toString().padLeft(2, '0')}:${totalMinutes.toString().padLeft(2, '0')}';
+    return minutesToTime(totalTimeForWeek);
   }
 
   @override
@@ -63,7 +87,7 @@ class MyHomePage extends StatelessWidget {
         8,
         (j) {
           if (j == 0) {
-            return 'Total'; // Placeholder, will be replaced later
+            return '-'; // Placeholder, will be replaced later
           } else if (i == 0) {
             // Generate Dates
             DateTime date = DateTime.now().subtract(Duration(days: 8 - j));
@@ -78,10 +102,33 @@ class MyHomePage extends StatelessWidget {
       ),
     );
 
-    // Calculate total times
-    for (int i = 1; i < content.length; i++) {
-      content[i][0] = totalTimeForRow(content[i]);
+    // Transpose content for easier column-wise operations
+    List<List<String>> transposedContent = List.generate(content[0].length,
+        (i) => List.generate(content.length, (j) => content[j][i]));
+
+    // Calculate total times and engagements
+    for (int i = 1; i < transposedContent.length; i++) {
+      List<String> results =
+          calculateColumnTimesAndEngagements(transposedContent[i]);
+      transposedContent[i][4] = results[0]; // Total Time
+      transposedContent[i][5] = results[1]; // Running Engagement
+      transposedContent[i][6] = results[2]; // Jogging Engagement
+      transposedContent[i][7] = results[3]; // Exercise Engagement
     }
+
+    // Calculate total times for the week
+    for (int i = 1; i < 5; i++) {
+      List<String> column = List.generate(
+          transposedContent.length, (j) => transposedContent[j][i]);
+      String totalTimeForWeek = calculateTotalTimeForWeek(column);
+      transposedContent[0][i] = totalTimeForWeek;
+    }
+
+    // Transpose content back
+    content = List.generate(
+        transposedContent[0].length,
+        (i) => List.generate(
+            transposedContent.length, (j) => transposedContent[j][i]));
 
     return Scaffold(
       appBar: AppBar(
